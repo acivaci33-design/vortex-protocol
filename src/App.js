@@ -13,9 +13,34 @@ import { identityService } from './services/identity';
 import { db } from './services/database';
 import { notificationService, messagingService, securityService, connectionManager } from './services';
 import toast from 'react-hot-toast';
+// Font size mappings
+const fontSizeMap = {
+    small: '14px',
+    medium: '16px',
+    large: '18px',
+};
 export default function App() {
     const [appState, setAppState] = useState('loading');
     const { appearance } = useSettingsStore();
+    // Apply appearance settings to CSS
+    useEffect(() => {
+        const root = document.documentElement;
+        // Apply accent color
+        root.style.setProperty('--color-primary', appearance.accentColor);
+        root.style.setProperty('--color-primary-hover', `${appearance.accentColor}dd`);
+        // Apply font size
+        root.style.setProperty('--font-size-base', fontSizeMap[appearance.fontSize] || '16px');
+        document.body.style.fontSize = fontSizeMap[appearance.fontSize] || '16px';
+        // Apply theme class
+        root.classList.remove('light', 'dark');
+        if (appearance.theme === 'system') {
+            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            root.classList.add(isDark ? 'dark' : 'light');
+        }
+        else {
+            root.classList.add(appearance.theme);
+        }
+    }, [appearance.accentColor, appearance.fontSize, appearance.theme]);
     // Initialize app on mount
     useEffect(() => {
         const init = async () => {

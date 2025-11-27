@@ -3,7 +3,7 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
  * VORTEX Protocol - Settings Panel
  * Full settings UI with all configuration options
  */
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Sun, Moon, Monitor, Palette, Bell, Lock, Shield, HardDrive, Info, Trash2, Download, ChevronRight, Check, User, Camera, Copy, Fingerprint, } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -32,8 +32,10 @@ function ProfileSettings() {
     const [status, setStatus] = useState('Available');
     const [publicKey, setPublicKey] = useState('');
     const [fingerprint, setFingerprint] = useState('');
+    const [avatarUrl, setAvatarUrl] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [copied, setCopied] = useState(false);
+    const fileInputRef = React.useRef(null);
     // Load identity data on mount
     useEffect(() => {
         const identity = identityService.getIdentity();
@@ -42,12 +44,42 @@ function ProfileSettings() {
             setPublicKey(identity.publicKey);
             setFingerprint(identityService.getFingerprint());
         }
-        // Load status from settings
+        // Load status and avatar from settings
         const savedStatus = db.getSetting('user_status');
         if (savedStatus) {
             setStatus(savedStatus);
         }
+        const savedAvatar = db.getSetting('user_avatar');
+        if (savedAvatar) {
+            setAvatarUrl(savedAvatar);
+        }
     }, []);
+    const handleAvatarClick = () => {
+        fileInputRef.current?.click();
+    };
+    const handleAvatarChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file)
+            return;
+        // Validate file
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please select an image file');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('Image must be less than 5MB');
+            return;
+        }
+        // Convert to base64
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const base64 = event.target?.result;
+            setAvatarUrl(base64);
+            db.setSetting('user_avatar', base64);
+            toast.success('Profile picture updated');
+        };
+        reader.readAsDataURL(file);
+    };
     const handleSave = async () => {
         if (!displayName.trim()) {
             toast.error('Display name is required');
@@ -80,7 +112,7 @@ function ProfileSettings() {
             toast.error('Failed to copy');
         }
     };
-    return (_jsx(SettingsSection, { title: "Profile", description: "Manage your profile information", children: _jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "flex items-center gap-4", children: [_jsxs("div", { className: "relative", children: [_jsx("div", { className: "w-20 h-20 rounded-full bg-primary flex items-center justify-center text-white text-2xl font-semibold", children: displayName?.[0]?.toUpperCase() || 'U' }), _jsx("button", { className: "absolute bottom-0 right-0 w-8 h-8 rounded-full bg-surface-3 border-2 border-surface-1 flex items-center justify-center hover:bg-surface-4 transition-colors", children: _jsx(Camera, { size: 14 }) })] }), _jsxs("div", { children: [_jsx("p", { className: "font-medium text-text-primary", children: displayName || 'Anonymous' }), _jsx("p", { className: "text-sm text-text-secondary", children: "Click to change avatar" })] })] }), _jsx(SettingsInput, { label: "Display Name", value: displayName, onChange: setDisplayName, placeholder: "Enter your name" }), _jsx(SettingsInput, { label: "Status", value: status, onChange: setStatus, placeholder: "What's on your mind?" }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-text-primary mb-2", children: "Public Key" }), _jsxs("div", { className: "flex items-center gap-2", children: [_jsx("input", { type: "text", value: publicKey, readOnly: true, className: "flex-1 px-3 py-2 rounded-lg bg-surface-3 border border-border text-text-secondary text-sm font-mono truncate" }), _jsx("button", { onClick: handleCopyKey, className: "p-2 rounded-lg bg-surface-3 hover:bg-surface-4 text-text-secondary hover:text-text-primary transition-colors", title: "Copy public key", children: copied ? _jsx(Check, { size: 18 }) : _jsx(Copy, { size: 18 }) })] })] }), fingerprint && (_jsxs("div", { children: [_jsxs("label", { className: "block text-sm font-medium text-text-primary mb-2 flex items-center gap-2", children: [_jsx(Fingerprint, { size: 16 }), "Safety Number"] }), _jsx("div", { className: "p-3 rounded-lg bg-surface-3 border border-border font-mono text-sm text-center text-text-primary tracking-wider", children: fingerprint }), _jsx("p", { className: "mt-1 text-xs text-text-muted", children: "Share this with contacts to verify your identity" })] })), _jsx("button", { onClick: handleSave, disabled: isSaving, className: "px-4 py-2 bg-primary hover:bg-primary-hover disabled:bg-primary/50 text-white rounded-lg transition-colors disabled:cursor-not-allowed", children: isSaving ? 'Saving...' : 'Save Changes' })] }) }));
+    return (_jsx(SettingsSection, { title: "Profile", description: "Manage your profile information", children: _jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "flex items-center gap-4", children: [_jsxs("div", { className: "relative cursor-pointer", onClick: handleAvatarClick, children: [avatarUrl ? (_jsx("img", { src: avatarUrl, alt: "Profile", className: "w-20 h-20 rounded-full object-cover border-2 border-border" })) : (_jsx("div", { className: "w-20 h-20 rounded-full bg-primary flex items-center justify-center text-white text-2xl font-semibold", children: displayName?.[0]?.toUpperCase() || 'U' })), _jsx("button", { className: "absolute bottom-0 right-0 w-8 h-8 rounded-full bg-surface-3 border-2 border-surface-1 flex items-center justify-center hover:bg-surface-4 transition-colors", children: _jsx(Camera, { size: 14 }) })] }), _jsxs("div", { children: [_jsx("p", { className: "font-medium text-text-primary", children: displayName || 'Anonymous' }), _jsx("p", { className: "text-sm text-text-secondary", children: "Click to change avatar" })] }), _jsx("input", { ref: fileInputRef, type: "file", accept: "image/*", onChange: handleAvatarChange, className: "hidden" })] }), _jsx(SettingsInput, { label: "Display Name", value: displayName, onChange: setDisplayName, placeholder: "Enter your name" }), _jsx(SettingsInput, { label: "Status", value: status, onChange: setStatus, placeholder: "What's on your mind?" }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-text-primary mb-2", children: "Public Key" }), _jsxs("div", { className: "flex items-center gap-2", children: [_jsx("input", { type: "text", value: publicKey, readOnly: true, className: "flex-1 px-3 py-2 rounded-lg bg-surface-3 border border-border text-text-secondary text-sm font-mono truncate" }), _jsx("button", { onClick: handleCopyKey, className: "p-2 rounded-lg bg-surface-3 hover:bg-surface-4 text-text-secondary hover:text-text-primary transition-colors", title: "Copy public key", children: copied ? _jsx(Check, { size: 18 }) : _jsx(Copy, { size: 18 }) })] })] }), fingerprint && (_jsxs("div", { children: [_jsxs("label", { className: "block text-sm font-medium text-text-primary mb-2 flex items-center gap-2", children: [_jsx(Fingerprint, { size: 16 }), "Safety Number"] }), _jsx("div", { className: "p-3 rounded-lg bg-surface-3 border border-border font-mono text-sm text-center text-text-primary tracking-wider", children: fingerprint }), _jsx("p", { className: "mt-1 text-xs text-text-muted", children: "Share this with contacts to verify your identity" })] })), _jsx("button", { onClick: handleSave, disabled: isSaving, className: "px-4 py-2 bg-primary hover:bg-primary-hover disabled:bg-primary/50 text-white rounded-lg transition-colors disabled:cursor-not-allowed", children: isSaving ? 'Saving...' : 'Save Changes' })] }) }));
 }
 function AppearanceSettings() {
     const { appearance, updateAppearance, setTheme } = useSettingsStore();
@@ -212,7 +244,7 @@ function NotificationSettings() {
 }
 function StorageSettings() {
     const { storage, updateStorage } = useSettingsStore();
-    const [storageSize, setStorageSize] = useState({ used: 0, total: 50 * 1024 * 1024 }); // 50MB limit
+    const [storageSize, setStorageSize] = useState({ used: 0, total: 1024 * 1024 * 1024 }); // 1GB limit
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
     useEffect(() => {

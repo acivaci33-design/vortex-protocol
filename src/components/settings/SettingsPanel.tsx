@@ -96,8 +96,10 @@ function ProfileSettings() {
   const [status, setStatus] = useState('Available');
   const [publicKey, setPublicKey] = useState('');
   const [fingerprint, setFingerprint] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Load identity data on mount
   useEffect(() => {
@@ -108,12 +110,47 @@ function ProfileSettings() {
       setFingerprint(identityService.getFingerprint());
     }
     
-    // Load status from settings
+    // Load status and avatar from settings
     const savedStatus = db.getSetting('user_status');
     if (savedStatus) {
       setStatus(savedStatus);
     }
+    
+    const savedAvatar = db.getSetting('user_avatar');
+    if (savedAvatar) {
+      setAvatarUrl(savedAvatar);
+    }
   }, []);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setAvatarUrl(base64);
+      db.setSetting('user_avatar', base64);
+      toast.success('Profile picture updated');
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSave = async () => {
     if (!displayName.trim()) {
@@ -154,10 +191,18 @@ function ProfileSettings() {
       <div className="space-y-6">
         {/* Avatar */}
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center text-white text-2xl font-semibold">
-              {displayName?.[0]?.toUpperCase() || 'U'}
-            </div>
+          <div className="relative cursor-pointer" onClick={handleAvatarClick}>
+            {avatarUrl ? (
+              <img 
+                src={avatarUrl} 
+                alt="Profile" 
+                className="w-20 h-20 rounded-full object-cover border-2 border-border"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center text-white text-2xl font-semibold">
+                {displayName?.[0]?.toUpperCase() || 'U'}
+              </div>
+            )}
             <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-surface-3 border-2 border-surface-1 flex items-center justify-center hover:bg-surface-4 transition-colors">
               <Camera size={14} />
             </button>
@@ -166,6 +211,13 @@ function ProfileSettings() {
             <p className="font-medium text-text-primary">{displayName || 'Anonymous'}</p>
             <p className="text-sm text-text-secondary">Click to change avatar</p>
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleAvatarChange}
+            className="hidden"
+          />
         </div>
 
         {/* Display Name */}
@@ -644,7 +696,7 @@ function NotificationSettings() {
 
 function StorageSettings() {
   const { storage, updateStorage } = useSettingsStore();
-  const [storageSize, setStorageSize] = useState({ used: 0, total: 50 * 1024 * 1024 }); // 50MB limit
+  const [storageSize, setStorageSize] = useState({ used: 0, total: 1024 * 1024 * 1024 }); // 1GB limit
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<'messages' | 'all' | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 

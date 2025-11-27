@@ -30,13 +30,15 @@ class ConnectionManager extends EventEmitter {
             if (!identity)
                 throw new Error('No identity');
             this.myPeerId = identity.id;
+            console.log('[P2P] Connecting to signaling server:', this.signalingUrl);
             this.socket = io(this.signalingUrl, {
-                transports: ['websocket'],
+                transports: ['websocket', 'polling'],
                 autoConnect: true,
                 reconnection: true,
                 reconnectionAttempts: this.maxReconnectAttempts,
                 reconnectionDelay: 1000,
                 reconnectionDelayMax: 5000,
+                timeout: 20000,
                 auth: {
                     peerId: this.myPeerId,
                     publicKey: identity.publicKey,

@@ -13,7 +13,8 @@ import {
   clipboard, 
   nativeImage, 
   dialog, 
-  Notification 
+  Notification,
+  Menu
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import path from 'node:path';
@@ -154,6 +155,9 @@ function getDb() {
 }
 
 function createWindow() {
+  // Remove menu bar
+  Menu.setApplicationMenu(null);
+  
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -162,7 +166,13 @@ function createWindow() {
     backgroundColor: '#09090b',
     title: 'VORTEX Protocol',
     frame: true,
-    titleBarStyle: 'default',
+    autoHideMenuBar: true,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#09090b',
+      symbolColor: '#ffffff',
+      height: 32
+    },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -594,19 +604,66 @@ ipcMain.handle('DB_VACUUM', () => {
 });
 
 // ==================== Notifications ====================
-ipcMain.handle('NOTIFICATION_SHOW', (_event, options: { title: string; body: string; silent?: boolean }) => {
+ipcMain.handle('NOTIFICATION_SHOW', (_event, options: { 
+  title: string; 
+  body: string; 
+  silent?: boolean;
+  sound?: string;
+  conversationId?: string;
+}) => {
   if (Notification.isSupported()) {
-    new Notification({ ...options, icon: undefined }).show();
+    const notification = new Notification({
+      title: options.title,
+      body: options.body,
+      silent: options.silent ?? false,
+      icon: path.join(__dirname, '../dist/icon.png'),
+      urgency: 'normal',
+    });
+    
+    notification.on('click', () => {
+      // Focus the window when notification is clicked
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+        
+        // Send event to renderer to navigate to the conversation
+        if (options.conversationId) {
+          mainWindow.webContents.send('NOTIFICATION_CLICK', { 
+            conversationId: options.conversationId 
+          });
+        }
+      }
+    });
+    
+    notification.show();
+    
+    // Flash taskbar on Windows
+    if (process.platform === 'win32' && mainWindow && !mainWindow.isFocused()) {
+      mainWindow.flashFrame(true);
+    }
   }
 });
 
 ipcMain.handle('NOTIFICATION_SET_BADGE', (_event, count: number) => {
+  // Windows taskbar badge overlay
+  if (process.platform === 'win32' && mainWindow) {
+    if (count > 0) {
+      mainWindow.setOverlayIcon(null, `${count} unread`);
+    } else {
+      mainWindow.setOverlayIcon(null, '');
+    }
+  }
+  // macOS dock badge
   if (process.platform === 'darwin') {
     app.dock?.setBadge(count > 0 ? String(count) : '');
   }
 });
 
 ipcMain.handle('NOTIFICATION_CLEAR_BADGE', () => {
+  if (process.platform === 'win32' && mainWindow) {
+    mainWindow.setOverlayIcon(null, '');
+    mainWindow.flashFrame(false);
+  }
   if (process.platform === 'darwin') {
     app.dock?.setBadge('');
   }

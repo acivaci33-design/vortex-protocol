@@ -28,7 +28,7 @@ import { DetailPanel } from './DetailPanel';
 import { CallOverlay } from '../call/CallOverlay';
 import { SettingsPanel } from '../settings/SettingsPanel';
 import { ConnectionStatus } from './ConnectionStatus';
-import { useSettingsStore } from '../../stores';
+import { useSettingsStore, useChatStore } from '../../stores';
 import { useServiceSync } from '../../hooks/useServiceSync';
 
 type View = 'chats' | 'contacts' | 'calls' | 'settings';
@@ -38,9 +38,13 @@ export function MainLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [detailPanelOpen, setDetailPanelOpen] = useState(false);
   const { appearance, setTheme } = useSettingsStore();
+  const unreadTotal = useChatStore((state) => state.unreadTotal);
 
   // Sync services with store (handles incoming messages, typing, etc.)
   useServiceSync();
+
+  // Get total unread count
+  const totalUnreadCount = unreadTotal();
 
   // Listen for keyboard shortcuts
   useEffect(() => {
@@ -63,7 +67,7 @@ export function MainLayout() {
   }, []);
 
   const navItems = [
-    { id: 'chats' as const, icon: MessageSquare, label: 'Chats', badge: 3 },
+    { id: 'chats' as const, icon: MessageSquare, label: 'Chats', badge: totalUnreadCount > 0 ? totalUnreadCount : undefined },
     { id: 'contacts' as const, icon: Users, label: 'Contacts' },
     { id: 'calls' as const, icon: Phone, label: 'Calls' },
     { id: 'settings' as const, icon: Settings, label: 'Settings' },
@@ -71,8 +75,11 @@ export function MainLayout() {
 
   return (
     <div className="flex h-screen bg-surface-0 text-text-primary overflow-hidden">
+      {/* Title bar drag region for Windows */}
+      <div className="fixed top-0 left-0 right-0 h-8 z-50" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
+      
       {/* Navigation Rail */}
-      <nav className="flex flex-col items-center w-16 bg-surface-1 border-r border-border py-4 shrink-0">
+      <nav className="flex flex-col items-center w-16 bg-surface-1 border-r border-border pt-10 pb-4 shrink-0">
         {/* Logo */}
         <div className="mb-6">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-glow">
