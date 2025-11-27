@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "lib": ["ES2021", "DOM"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "types": ["node", "vite/client", "react", "react-dom"],
+    "baseUrl": "."
+  },
+  "include": ["electron/**/*.ts", "src/**/*", "vite.config.ts"],
+  "exclude": ["dist", "dist-electron", "node_modules"]
+}
